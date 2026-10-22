@@ -26,16 +26,19 @@ class CountryRouter:
                 # Retain keyless records as-is (they will be quarantined)
                 continue
 
-            if key not in grouped:
-                grouped[key] = rec
+            # Authoritative global key for H/D feed; source-scoped for local CSV extracts
+            dedup_key = key if rec.source_system == "HD_FEED" else f"{rec.source_system}:{key}"
+
+            if dedup_key not in grouped:
+                grouped[dedup_key] = rec
             else:
-                existing = grouped[key]
+                existing = grouped[dedup_key]
                 # Compare (timestamp, row_number)
                 existing_key = (existing.source_file_timestamp, existing.source_row_number)
                 incoming_key = (rec.source_file_timestamp, rec.source_row_number)
 
                 if incoming_key > existing_key:
-                    grouped[key] = rec
+                    grouped[dedup_key] = rec
 
         # Also include any keyless quarantine records
         keyless_quarantine = [r for r in records if not r.member_id]
@@ -51,16 +54,22 @@ class CountryRouter:
         ]
 
     def find_existing_active_member(
-        self, member_id: str, db: DatabaseManager
+        self, member_id: str, db: DatabaseManager, source_system: str = "HD_FEED"
     ) -> Optional[Tuple[str, datetime]]:
         """
-        Search all active country tables for an existing active profile for member_id.
-        Returns (table_name, source_file_timestamp) if found, else None.
+        Search country tables for an existing active profile for member_id.
+        For HD_FEED, searches globally across all country tables.
+        For CSV feeds, scopes check to the source_system.
         """
         country_tables = self.get_country_tables(db)
         for tbl in country_tables:
-            query = f"SELECT source_file_timestamp FROM {tbl} WHERE member_id = ? AND is_active = 'A';"
-            res = db.conn.execute(query, [member_id]).fetchall()
+            if source_system == "HD_FEED":
+                query = f"SELECT source_file_timestamp FROM {tbl} WHERE member_id = ? AND is_active = 'A';"
+                params = [member_id]
+            else:
+                query = f"SELECT source_file_timestamp FROM {tbl} WHERE member_id = ? AND source_system = ? AND is_active = 'A';"
+                params = [member_id, source_system]
+            res = db.conn.execute(query, params).fetchall()
             if res:
                 timestamp = res[0][0]
                 return (tbl, timestamp)
@@ -106,8 +115,8 @@ class CountryRouter:
             # Determine target country table
             target_table = db.create_country_table_if_not_exists(rec.country)
 
-            # Check if active member already exists anywhere in the database
-            existing = self.find_existing_active_member(rec.member_id, db)
+            # Check if active member already exists in the database
+            existing = self.find_existing_active_member(rec.member_id, db, source_system=rec.source_system)
 
             if existing is None:
                 # Case 1: Brand new member
