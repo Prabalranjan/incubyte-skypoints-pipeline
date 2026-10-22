@@ -90,7 +90,52 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Running Tests
+### 3. Running the Pipeline
+You can run the pipeline directly using the top-level runner:
 ```bash
-pytest
+# Run against the supplied assessment files in 'Mail files'
+python run_pipeline.py --input-dir "Mail files" --as-of-date 2024-06-01
 ```
+
+Or using a persistent DuckDB database file for permanent inspection:
+```bash
+python run_pipeline.py --input-dir "Mail files" --as-of-date 2024-06-01 --db-path "skypoints_data.duckdb"
+```
+
+#### CLI Options
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| `--input-dir` | Folder path containing incoming data feeds | `"Mail files"` |
+| `--as-of-date` | Reference evaluation date for Age and Stale Member derivation (`YYYY-MM-DD`) | Current Date |
+| `--db-path` | DuckDB database path (e.g. `:memory:` or file path) | `":memory:"` |
+
+---
+
+### 4. Running the Test Suite
+The repository includes a comprehensive 46-test automated test suite covering all units, adapters, edge-cases, and end-to-end integration:
+```bash
+# Run via pytest
+pytest
+
+# Or run via standard unittest (zero external tools required)
+python -m unittest discover tests
+```
+
+---
+
+## Live Demonstration Walkthrough
+
+When presenting or demonstrating this solution, the following core features can be demonstrated:
+
+1. **Multi-Source Ingestion & Decoupled Adapters**:
+   * Run `python run_pipeline.py --input-dir "Mail files"` to demonstrate automatic discovery of Pipe (H/D), custom CSVs, and JSON feeds.
+2. **Data Cleaning & Date Normalization**:
+   * Demonstrates how diverse date layouts (`YYYY-MM-DD`, `M/D/YYYY`, compact `[M]MDDYYYY`) and anomalies (literal `"NULL"` DOB, invalid month `2021-13-13`) are cleanly parsed and validated without crashes.
+3. **Derived Metrics**:
+   * `Age`: Exact birthday anniversary calculation relative to `--as-of-date`.
+   * `Stale_Member`: Strict boundary check (`days_since_flight > 90`).
+4. **Dynamic Country Routing & Moves**:
+   * Demonstrates safe dynamic generation of `Table_<Country>` (`Table_Australia`, `Table_India`, `Table_USA`).
+   * Demonstrates relocation: moving a member to a new country table automatically deactivates their historical record (`is_active = 'I'`) in their old country table.
+5. **JSON Redemptions & Profile Join**:
+   * Demonstrates array unnesting into `Table_Redemptions`, idempotency on duplicate replay, and SQL join with `Current_Member_Profiles` preserving unmatched records with `UNMATCHED_MEMBER`.
