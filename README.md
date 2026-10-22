@@ -93,7 +93,8 @@ For full details on source feed inventory, data quality discovery, canonical sch
 │   ├── redemptions_feed.json
 │   └── HOW_TO_RUN_LOCAL.md
 ├── docs/
-│   └── ARCHITECTURE.md         # Source inventory, canonical schemas & design
+│   ├── ARCHITECTURE.md         # Source inventory, canonical schemas & design
+│   └── SNOWFLAKE_EXECUTION_GUIDE.md # Step-by-step Snowflake deployment playbook & ER diagram
 ├── Mail files/                 # Original assessment sample inputs
 ├── demo.py                     # Interactive 5-scenario evaluation runner
 ├── run_pipeline.py             # CLI runner for batch directory processing
@@ -193,6 +194,10 @@ python demo.py
 In accordance with Sarika's assessment brief (*"If you're unable to use Snowflake, a local SQL and Python implementation is acceptable. In that case, please explain in your README how the solution would translate to Snowflake"*), here is the comprehensive architectural mapping of how this pipeline executes natively inside **Snowflake**.
 
 Complete, copy-paste-ready Snowflake DDL scripts are provided in the [`sql/`](sql/) folder.
+
+> [!TIP]
+> **Complete Turnkey Snowflake Guide Available**:
+> For the complete step-by-step Snowflake deployment playbook with copy-paste SQL commands, stage setup, file formats, and the full multi-layer **Mermaid Entity-Relationship (ER) Diagram**, see [docs/SNOWFLAKE_EXECUTION_GUIDE.md](docs/SNOWFLAKE_EXECUTION_GUIDE.md).
 
 ### 1. Snowflake Architecture & Translation Matrix
 
