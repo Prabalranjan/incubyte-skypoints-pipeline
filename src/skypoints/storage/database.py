@@ -192,7 +192,15 @@ class DatabaseManager:
         columns = [col[0] for col in self.conn.execute(f"DESCRIBE {table_name};").fetchall()]
         cols_str = ", ".join(columns)
         self.conn.register("temp_member_records", df)
-        self.conn.execute(f"INSERT OR REPLACE INTO {table_name} ({cols_str}) SELECT {cols_str} FROM temp_member_records;")
+
+        # For Gold country tables, use INSERT OR REPLACE (deduplicate on member_id)
+        # For Staging/Quarantine, use standard INSERT (append-only audit history)
+        if table_name.startswith("Table_"):
+            sql = f"INSERT OR REPLACE INTO {table_name} ({cols_str}) SELECT {cols_str} FROM temp_member_records;"
+        else:
+            sql = f"INSERT INTO {table_name} ({cols_str}) SELECT {cols_str} FROM temp_member_records;"
+
+        self.conn.execute(sql)
         self.conn.unregister("temp_member_records")
 
     def insert_redemption_records(self, records: List[RedemptionRecord]):
