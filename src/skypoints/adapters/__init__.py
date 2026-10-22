@@ -7,6 +7,7 @@ from skypoints.adapters.csv_adapter import (
     UsaCsvAdapter,
     get_csv_adapter_for_file,
 )
+from skypoints.adapters.json_adapter import JsonRedemptionAdapter
 
 __all__ = [
     "BaseAdapter",
@@ -15,4 +16,5 @@ __all__ = [
     "IndCsvAdapter",
     "UsaCsvAdapter",
     "get_csv_adapter_for_file",
+    "JsonRedemptionAdapter",
 ]
