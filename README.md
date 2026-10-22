@@ -112,7 +112,7 @@ python run_pipeline.py --input-dir "Mail files" --as-of-date 2024-06-01 --db-pat
 ---
 
 ### 4. Running the Test Suite
-The repository includes a comprehensive 46-test automated test suite covering all units, adapters, edge-cases, and end-to-end integration:
+The repository includes a comprehensive 47-test automated test suite covering all units, adapters, edge-cases, and end-to-end integration:
 ```bash
 # Run via pytest
 pytest
@@ -123,19 +123,35 @@ python -m unittest discover tests
 
 ---
 
-## Live Demonstration Walkthrough
+## Live Demonstration Runner
 
-When presenting or demonstrating this solution, the following core features can be demonstrated:
+To execute an automated walkthrough demonstrating all 5 core evaluation requirements in one command, run:
+```bash
+python demo.py
+```
 
+### Demonstration Scenarios Covered:
 1. **Multi-Source Ingestion & Decoupled Adapters**:
-   * Run `python run_pipeline.py --input-dir "Mail files"` to demonstrate automatic discovery of Pipe (H/D), custom CSVs, and JSON feeds.
-2. **Data Cleaning & Date Normalization**:
-   * Demonstrates how diverse date layouts (`YYYY-MM-DD`, `M/D/YYYY`, compact `[M]MDDYYYY`) and anomalies (literal `"NULL"` DOB, invalid month `2021-13-13`) are cleanly parsed and validated without crashes.
-3. **Derived Metrics**:
-   * `Age`: Exact birthday anniversary calculation relative to `--as-of-date`.
-   * `Stale_Member`: Strict boundary check (`days_since_flight > 90`).
-4. **Dynamic Country Routing & Moves**:
-   * Demonstrates safe dynamic generation of `Table_<Country>` (`Table_Australia`, `Table_India`, `Table_USA`).
-   * Demonstrates relocation: moving a member to a new country table automatically deactivates their historical record (`is_active = 'I'`) in their old country table.
+   * Scans and parses `Mail files/` ([AUS(Sheet1).csv](Mail%20files/AUS(Sheet1).csv), [IND(in).csv](Mail%20files/IND(in).csv), [USA(in).csv](Mail%20files/USA(in).csv)).
+   * Demonstrates string `"NULL"` handling, invalid month `2021-13-13` warnings, and compact date padding without pipeline crashes.
+2. **Derived Metrics (Age & Strict 90-Day Stale Member Rule)**:
+   * `Age`: Exact birthday anniversary calculation (evaluating before vs on birthday).
+   * `Stale_Member`: Strict boundary demonstration: 89 days (Active), 90 days (Not Stale), 91 days (Stale).
+3. **Late-Arriving Older File Protection**:
+   * Simulates Day 2 profile arrival (`2024-01-15`) followed by a delayed Day 1 file (`2024-01-10`).
+   * Proves that the current profile in `Table_USA` does not regress to the older state.
+4. **Country Moves & Cross-Table Membership Consistency**:
+   * Simulates a member relocating from India to Australia.
+   * Proves that `Table_India` record is marked inactive (`is_active = 'I'`) and `Table_Australia` is created active (`is_active = 'A'`), guaranteeing exactly 1 active country profile.
 5. **JSON Redemptions & Profile Join**:
-   * Demonstrates array unnesting into `Table_Redemptions`, idempotency on duplicate replay, and SQL join with `Current_Member_Profiles` preserving unmatched records with `UNMATCHED_MEMBER`.
+   * Demonstrates array unnesting into `Table_Redemptions`, idempotency on duplicate transaction replay, and SQL join with `Current_Member_Profiles` preserving unmatched records with `UNMATCHED_MEMBER`.
+
+---
+
+## Warehouse Portability: Snowflake & ANSI SQL Scripts
+
+For cloud warehouse deployments (e.g., Snowflake, BigQuery, PostgreSQL) or pure SQL reviews, standalone production DDL scripts are provided in the `sql/` directory:
+- [sql/01_bronze_raw_landing.sql](sql/01_bronze_raw_landing.sql): Raw landing table DDL and audit metadata.
+- [sql/02_silver_staging_and_derived.sql](sql/02_silver_staging_and_derived.sql): Staging DDL, quarantine table, and SQL expressions for `Age` & `Stale_Member`.
+- [sql/03_gold_country_tables.sql](sql/03_gold_country_tables.sql): Dynamic target table DDL (`Table_India`, `Table_USA`, `Table_Australia`), "Latest Record Wins" window function query, and `Current_Member_Profiles` view.
+- [sql/04_gold_redemptions_and_join.sql](sql/04_gold_redemptions_and_join.sql): `Table_Redemptions` DDL, native Snowflake `LATERAL FLATTEN` JSON query, and profile join view.
