@@ -1,0 +1,100 @@
+[
+  {
+    "member_id": "1000000001",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_IND_001",
+        "txn_date": "20240112",
+        "partner": "Air India",
+        "miles_redeemed": 12000,
+        "status": "COMPLETED"
+      },
+      {
+        "txn_id": "RX_IND_002",
+        "txn_date": "20240114",
+        "partner": "Singapore Airlines",
+        "miles_redeemed": 8500,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "1000000003",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_SGP_001",
+        "txn_date": "20240110",
+        "partner": "Singapore Airlines",
+        "miles_redeemed": 15000,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "1000000005",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_GER_001",
+        "txn_date": "20240108",
+        "partner": "Lufthansa",
+        "miles_redeemed": 22000,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "1000000007",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_CAN_001",
+        "txn_date": "20240111",
+        "partner": "Air Canada",
+        "miles_redeemed": 9500,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "1000000013",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_UAE_001",
+        "txn_date": "20240113",
+        "partner": "Emirates",
+        "miles_redeemed": 30000,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "1000000015",
+    "feed_date": "20240120",
+    "redemptions": [
+      {
+        "txn_id": "RX_AUS_001",
+        "txn_date": "20240118",
+        "partner": "Qantas",
+        "miles_redeemed": 14000,
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  {
+    "member_id": "GHOST_MEMBER_99999",
+    "feed_date": "20240115",
+    "redemptions": [
+      {
+        "txn_id": "RX_UNMATCHED_777",
+        "txn_date": "20240114",
+        "partner": "British Airways",
+        "miles_redeemed": 6000,
+        "status": "COMPLETED"
+      }
+    ]
+  }
+]
