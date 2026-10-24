@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyPoints Airline Loyalty Data Pipeline — Interactive Visual Walkthrough</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Sticky App Header -->
+  <header class="app-header" id="main-header">
+    <div class="container header-inner">
+      <div class="brand-wrapper">
+        <div class="brand-icon">✈</div>
+        <div>
+          <h1 class="brand-title">SkyPoints Loyalty Data Pipeline</h1>
+          <div class="brand-subtitle">Medallion Architecture Visual Walkthrough</div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Badges -->
+      <div class="header-stats" id="header-stats-bar">
+        <div class="stat-pill" title="Discovered sample data files">
+          <span>Files:</span>
+          <span class="stat-pill-num" id="stat-files">5</span>
+        </div>
+        <div class="stat-pill bronze" title="Raw payloads landed in Bronze">
+          <span>Bronze Rows:</span>
+          <span class="stat-pill-num" id="stat-bronze">17</span>
+        </div>
+        <div class="stat-pill silver" title="Standardized loyalty profiles">
+          <span>Silver Staged:</span>
+          <span class="stat-pill-num" id="stat-silver">9</span>
+        </div>
+        <div class="stat-pill gold" title="Target country table records">
+          <span>Gold Country Records:</span>
+          <span class="stat-pill-num" id="stat-gold">9</span>
+        </div>
+        <div class="stat-pill" title="Redemption transactions loaded">
+          <span>Redemptions:</span>
+          <span class="stat-pill-num" id="stat-redemptions">2</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Stage Navigation Bar -->
+  <nav class="nav-bar" id="pipeline-navigation">
+    <div class="container">
+      <ul class="nav-tabs" role="tablist">
+        <li><button class="nav-tab-btn active" data-tab="tab-stage1" id="nav-btn-stage1">📁 1. Source Ingestion</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-stage2" id="nav-btn-stage2">🥉 2. Bronze (Raw Landing)</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-stage3" id="nav-btn-stage3">🥈 3. Silver (Quality & Derived)</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-stage4" id="nav-btn-stage4">🥇 4. Gold (Country Routing)</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-stage5" id="nav-btn-stage5">💳 5. Gold (JSON Redemptions)</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-scenarios" id="nav-btn-scenarios">🧪 6. Edge-Case Simulator</button></li>
+        <li><button class="nav-tab-btn" data-tab="tab-arch" id="nav-btn-arch">🗺️ 7. Architecture & Code Map</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Hero Section -->
+    <section class="hero-section" id="hero-overview">
+      <div class="hero-card">
+        <h2 class="hero-headline">Live End-to-End Pipeline Visualization</h2>
+        <p class="hero-desc">
+          Explore how the <strong>SkyPoints Loyalty Data Pipeline</strong> processes multi-format daily feeds (Pipe-delimited H/D, Country CSV extracts, and nested JSON redemptions) through a production-grade <strong>3-Layer Medallion Architecture (Bronze &rarr; Silver &rarr; Gold)</strong>. Click any stage below or use the top tabs to inspect actual data transformations and the exact code responsible.
+        </p>
+
+        <!-- Interactive Flowchart Stepper -->
+        <div class="flowchart-container" id="pipeline-flowchart">
+          <div class="flow-step-card active" data-tab="tab-stage1" id="flow-card-1">
+            <span class="flow-step-tag bronze">Source Tier</span>
+            <div class="flow-step-title">1. Multi-Format Feeds</div>
+            <div class="flow-step-desc">Discovery of CSVs, H/D pipe files, and JSON streams.</div>
+            <div class="flow-step-meta">5 Sample Files &rarr;</div>
+          </div>
+
+          <div class="flow-step-card" data-tab="tab-stage2" id="flow-card-2">
+            <span class="flow-step-tag bronze">Bronze Layer</span>
+            <div class="flow-step-title">2. Raw Landing</div>
+            <div class="flow-step-desc">Verbatim audit capture with source lineage and timestamps.</div>
+            <div class="flow-step-meta">raw_landing_feed &rarr;</div>
+          </div>
+
+          <div class="flow-step-card" data-tab="tab-stage3" id="flow-card-3">
+            <span class="flow-step-tag silver">Silver Layer</span>
+            <div class="flow-step-title">3. Quality & Enrichment</div>
+            <div class="flow-step-desc">Canonical normalization, Age & 90-day Stale calculations.</div>
+            <div class="flow-step-meta">staging_members &rarr;</div>
+          </div>
+
+          <div class="flow-step-card" data-tab="tab-stage4" id="flow-card-4">
+            <span class="flow-step-tag gold">Gold Layer</span>
+            <div class="flow-step-title">4. Country Routing</div>
+            <div class="flow-step-desc">Dynamic Table_&lt;Country&gt; partition & move deactivation.</div>
+            <div class="flow-step-meta">Table_&lt;Country&gt; &rarr;</div>
+          </div>
+
+          <div class="flow-step-card" data-tab="tab-stage5" id="flow-card-5">
+            <span class="flow-step-tag json">Transactions</span>
+            <div class="flow-step-title">5. JSON Redemptions</div>
+            <div class="flow-step-desc">Array flattening, replay idempotency, and profile join.</div>
+            <div class="flow-step-meta">Table_Redemptions &rarr;</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 1: Source Ingestion -->
+    <section class="content-section active" id="tab-stage1">
+      <div class="section-header">
+        <span class="section-tag">Stage 1 &bull; Ingestion Tier</span>
+        <h2 class="section-title">Source File Discovery & Modular Adapters</h2>
+        <p class="section-subtitle">
+          The pipeline scans <code>sample_data/</code>, automatically detecting format signatures and assigning isolated adapter classes.
+        </p>
+      </div>
+
+      <!-- Code Reference Pointer -->
+      <div class="code-pointer-box" id="code-pointer-stage1">
+        <div class="code-pointer-title">📍 Source Code Responsible For This Stage</div>
+        <div class="code-pointer-links">
+          <div class="code-link-item">
+            <span class="code-desc">Adapter Discovery & Selection:</span>
+            <span class="code-file-badge">PipelineRunner.select_adapter_for_file()</span>
+            <span class="code-desc">in <code>src/skypoints/pipeline.py#L43-L60</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Base Adapter Contract & Timestamp Parsing:</span>
+            <span class="code-file-badge">BaseAdapter</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/base.py#L12-L80</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Country CSV Isolators (Australia, India, USA):</span>
+            <span class="code-file-badge">AusCsvAdapter, IndCsvAdapter, UsaCsvAdapter</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/csv_adapter.py</code></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live File Inspector Grid -->
+      <div class="grid-2">
+        <div class="panel-card">
+          <div class="panel-title">
+            <span>Discovered Sample Files</span>
+            <span style="font-size:12px; color:var(--text-muted);">Click to inspect payload</span>
+          </div>
+          <div class="grid-cards" id="file-cards-list">
+            <!-- Populated via app.js -->
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-title">
+            <span>Raw File Content Preview</span>
+            <div id="file-viewer-adapter"></div>
+          </div>
+          <div class="code-viewer-container">
+            <div class="code-viewer-header" id="file-viewer-header">Loading...</div>
+            <div class="code-viewer-body" id="file-viewer-code"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 2: Bronze Layer -->
+    <section class="content-section" id="tab-stage2">
+      <div class="section-header">
+        <span class="section-tag">Stage 2 &bull; Bronze Layer</span>
+        <h2 class="section-title">Raw Landing Feed & Immutable Audit Lineage</h2>
+        <p class="section-subtitle">
+          Raw records land verbatim into <code>raw_landing_feed</code> without destructive modification, preserving complete audit lineage.
+        </p>
+      </div>
+
+      <!-- Code Reference Pointer -->
+      <div class="code-pointer-box" id="code-pointer-stage2">
+        <div class="code-pointer-title">📍 Source Code Responsible For This Stage</div>
+        <div class="code-pointer-links">
+          <div class="code-link-item">
+            <span class="code-desc">Bronze Model Definition:</span>
+            <span class="code-file-badge">RawRecord</span>
+            <span class="code-desc">in <code>src/skypoints/models/canonical.py#L12-L30</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Raw Batch Insertion & Audit Storage:</span>
+            <span class="code-file-badge">DatabaseManager.insert_raw_records()</span>
+            <span class="code-desc">in <code>src/skypoints/storage/database.py#L93-L125</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Bronze DDL Schema:</span>
+            <span class="code-file-badge">sql/01_bronze_raw_landing.sql</span>
+            <span class="code-desc">in <code>sql/01_bronze_raw_landing.sql</code></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>DuckDB Table: <code>raw_landing_feed</code></span>
+          <span style="font-size:12px; color:var(--accent-cyan);" id="bronze-filtered-count">Showing records</span>
+        </div>
+
+        <div class="search-bar-wrapper">
+          <input type="text" id="bronze-search" class="search-input" placeholder="Search by source system, filename, or raw text payload...">
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="bronze-data-table">
+            <thead>
+              <tr>
+                <th>Source System</th>
+                <th>File Name</th>
+                <th>Row #</th>
+                <th>Raw Payload (Verbatim)</th>
+                <th>File Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 3: Silver Layer -->
+    <section class="content-section" id="tab-stage3">
+      <div class="section-header">
+        <span class="section-tag">Stage 3 &bull; Silver Layer</span>
+        <h2 class="section-title">Data Quality Normalization & Derived Business Columns</h2>
+        <p class="section-subtitle">
+          Normalizes disparate date layouts, preserves leading zero string IDs, quarantines bad records, and computes derived Age and Stale status.
+        </p>
+      </div>
+
+      <!-- Code Reference Pointer -->
+      <div class="code-pointer-box" id="code-pointer-stage3">
+        <div class="code-pointer-title">📍 Source Code Responsible For This Stage</div>
+        <div class="code-pointer-links">
+          <div class="code-link-item">
+            <span class="code-desc">Derived Age & Stale Member Calculation:</span>
+            <span class="code-file-badge">calculate_age(), calculate_stale_member()</span>
+            <span class="code-desc">in <code>src/skypoints/enrichment/derived_columns.py#L12-L75</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Canonical Member Profile Model:</span>
+            <span class="code-file-badge">MemberRecord</span>
+            <span class="code-desc">in <code>src/skypoints/models/canonical.py#L32-L90</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Flexible Date Parsing Engine:</span>
+            <span class="code-file-badge">BaseAdapter.parse_date()</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/base.py#L40-L75</code></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Silver Staging Table -->
+      <div class="panel-card" style="margin-bottom: 24px;">
+        <div class="panel-title">
+          <span>Standardized Profiles in <code>staging_members</code></span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <label style="font-size:12px; color:var(--text-secondary);">Filter Status:</label>
+            <select id="silver-status-filter" class="sim-input" style="padding:4px 8px;">
+              <option value="ALL">All Valid & Warnings</option>
+              <option value="VALID">VALID Only</option>
+              <option value="WARNING">WARNING Only</option>
+            </select>
+            <span style="font-size:12px; color:var(--accent-cyan);" id="silver-filtered-count"></span>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="silver-data-table">
+            <thead>
+              <tr>
+                <th>Member ID</th>
+                <th>Member Name</th>
+                <th>Country</th>
+                <th>Standardized DOB</th>
+                <th>Derived Age</th>
+                <th>Flight Date</th>
+                <th>Stale (>90d)?</th>
+                <th>Quality Status</th>
+                <th>Source Lineage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quarantine Table -->
+      <div class="panel-card">
+        <div class="panel-title" style="color:#fb7185;">
+          <span>Quarantined Records Audit: <code>quarantine_members</code></span>
+          <span style="font-size:12px; color:var(--text-muted);">Isolated from Gold target tables</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="quarantine-data-table">
+            <thead>
+              <tr>
+                <th>Member ID</th>
+                <th>Member Name</th>
+                <th>Quarantine Reason</th>
+                <th>Source File & Row</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 4: Gold Layer -->
+    <section class="content-section" id="tab-stage4">
+      <div class="section-header">
+        <span class="section-tag">Stage 4 &bull; Gold Layer</span>
+        <h2 class="section-title">Dynamic Country Partitioning & Target Resolution</h2>
+        <p class="section-subtitle">
+          Dynamic country routing safely creates <code>Table_&lt;Country&gt;</code>, enforces latest-record-wins, protects against late-arriving files, and deactivates prior records on country moves.
+        </p>
+      </div>
+
+      <!-- Code Reference Pointer -->
+      <div class="code-pointer-box" id="code-pointer-stage4">
+        <div class="code-pointer-title">📍 Source Code Responsible For This Stage</div>
+        <div class="code-pointer-links">
+          <div class="code-link-item">
+            <span class="code-desc">Country Routing, Moves & Late-File Protection:</span>
+            <span class="code-file-badge">CountryRouter.apply_member_updates()</span>
+            <span class="code-desc">in <code>src/skypoints/router/table_router.py#L18-L135</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Dynamic Country Table DDL Creator:</span>
+            <span class="code-file-badge">DatabaseManager.create_country_table_if_not_exists()</span>
+            <span class="code-desc">in <code>src/skypoints/storage/database.py#L50-L90</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Unified Member Analytics View:</span>
+            <span class="code-file-badge">CountryRouter.refresh_current_profiles_view()</span>
+            <span class="code-desc">in <code>src/skypoints/router/table_router.py#L180-L210</code></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Country Tables Inspector -->
+      <div class="panel-card" style="margin-bottom: 24px;">
+        <div class="panel-title">
+          <span>Dynamic Gold Target Tables</span>
+          <span style="font-size:12px; color:var(--accent-emerald);">Table: <strong id="gold-active-country-name">Table_Australia</strong></span>
+        </div>
+
+        <div class="country-subtabs" id="country-subtabs-list">
+          <!-- Populated via app.js -->
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="gold-country-table">
+            <thead>
+              <tr>
+                <th>Member ID</th>
+                <th>Member Name</th>
+                <th>Tier</th>
+                <th>DOB & Age</th>
+                <th>Last Flight</th>
+                <th>Profile Status</th>
+                <th>Lineage Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Unified View -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>Unified View: <code>Current_Member_Profiles</code></span>
+          <span style="font-size:12px; color:var(--text-muted);">Dynamic UNION ALL across all active country profiles</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="unified-profiles-table">
+            <thead>
+              <tr>
+                <th>Member ID</th>
+                <th>Member Name</th>
+                <th>Country</th>
+                <th>Tier</th>
+                <th>Age</th>
+                <th>Flight Activity</th>
+                <th>Membership State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 5: Gold Transactions -->
+    <section class="content-section" id="tab-stage5">
+      <div class="section-header">
+        <span class="section-tag">Stage 5 &bull; Transactions Tier</span>
+        <h2 class="section-title">JSON Redemptions Flattening & Analytical Profile Join</h2>
+        <p class="section-subtitle">
+          Unnests nested JSON arrays into flat relational rows, enforces deduplication idempotency on <code>txn_id</code>, and performs analytical joins with member profiles.
+        </p>
+      </div>
+
+      <!-- Code Reference Pointer -->
+      <div class="code-pointer-box" id="code-pointer-stage5">
+        <div class="code-pointer-title">📍 Source Code Responsible For This Stage</div>
+        <div class="code-pointer-links">
+          <div class="code-link-item">
+            <span class="code-desc">JSON Array Unnesting & Date Normalization:</span>
+            <span class="code-file-badge">JsonRedemptionAdapter.parse_content()</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/json_adapter.py#L45-L95</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Idempotent Upsert & Deduplication:</span>
+            <span class="code-file-badge">JsonRedemptionAdapter.load_redemptions()</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/json_adapter.py#L100-L135</code></span>
+          </div>
+          <div class="code-link-item">
+            <span class="code-desc">Analytical Profile Left Join:</span>
+            <span class="code-file-badge">JsonRedemptionAdapter.query_redemptions_joined_with_members()</span>
+            <span class="code-desc">in <code>src/skypoints/adapters/json_adapter.py#L140-L165</code></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Redemptions Table -->
+      <div class="panel-card" style="margin-bottom: 24px;">
+        <div class="panel-title">
+          <span>Flattened Transactions: <code>Table_Redemptions</code></span>
+          <span style="font-size:12px; color:var(--text-muted);">Primary Key: txn_id (Enforces idempotency on replay)</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="redemptions-data-table">
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Member ID</th>
+                <th>Txn Date</th>
+                <th>Partner Airline</th>
+                <th>Miles Redeemed</th>
+                <th>Status</th>
+                <th>Source Feed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Analytical Join Table -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>Analytical Profile Join: <code>Table_Redemptions LEFT JOIN Current_Member_Profiles</code></span>
+          <span style="font-size:12px; color:var(--accent-cyan);">Retains 100% of transactions (matched & unmatched)</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="joined-analytics-table">
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Member ID</th>
+                <th>Member Name</th>
+                <th>Country</th>
+                <th>Tier</th>
+                <th>Partner</th>
+                <th>Miles</th>
+                <th>Join Match Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 6: Interactive Scenarios Simulator -->
+    <section class="content-section" id="tab-scenarios">
+      <div class="section-header">
+        <span class="section-tag">Stage 6 &bull; Interactive Simulator</span>
+        <h2 class="section-title">Assessment Boundary & Edge-Case Simulators</h2>
+        <p class="section-subtitle">
+          Test core business rules live in your browser: Age anniversary boundary, strict 90-day flight staleness, cross-table country moves, and late-arriving file protection.
+        </p>
+      </div>
+
+      <!-- Simulator 1: Age Calculator -->
+      <div class="sim-box" id="sim-age-box">
+        <div class="sim-box-title">🎂 Age Calculation Engine (Anniversary Boundary & Leap Year Safety)</div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
+          Calculates completed years. Member only turns a year older on or after their birthday anniversary in the target year. Handles leap-day (Feb 29) births safely.
+        </p>
+        <div class="sim-controls">
+          <div class="sim-input-group">
+            <label class="sim-label">Date of Birth (DOB):</label>
+            <input type="date" id="sim-dob" class="sim-input" value="1994-06-15">
+          </div>
+          <div class="sim-input-group">
+            <label class="sim-label">As-Of Reference Date:</label>
+            <input type="date" id="sim-asof" class="sim-input" value="2024-06-14">
+          </div>
+          <button id="sim-age-btn" class="sim-btn">Calculate Age</button>
+        </div>
+        <div class="sim-result-card" id="sim-age-result">
+          Click "Calculate Age" to test anniversary boundary conditions (e.g. 2024-06-14 is 29 years, 2024-06-15 is 30 years).
+        </div>
+      </div>
+
+      <!-- Simulator 2: Stale Member Calculator -->
+      <div class="sim-box" id="sim-stale-box">
+        <div class="sim-box-title">⏱️ Stale Member Rule (Strict > 90 Days Boundary)</div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
+          Assessment requirement: <em>"Stale means days since Flight_Date greater than 90."</em> Exact 90 days = ACTIVE; 91 days = STALE.
+        </p>
+        <div class="sim-controls">
+          <div class="sim-input-group">
+            <label class="sim-label">Last Flight Date:</label>
+            <input type="date" id="sim-flight" class="sim-input" value="2024-03-03">
+          </div>
+          <div class="sim-input-group">
+            <label class="sim-label">As-Of Reference Date:</label>
+            <input type="date" id="sim-stale-asof" class="sim-input" value="2024-06-01">
+          </div>
+          <button id="sim-stale-btn" class="sim-btn">Check Staleness</button>
+        </div>
+        <div class="sim-result-card" id="sim-stale-result">
+          Click "Check Staleness" to test the exact boundary logic.
+        </div>
+      </div>
+
+      <!-- Simulator 3 & 4: Country Moves and Late Files Architecture Walkthrough -->
+      <div class="grid-2">
+        <div class="sim-box">
+          <div class="sim-box-title">🌍 Country Relocation (Cross-Table Deactivation)</div>
+          <p style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
+            <strong>Scenario:</strong> Member relocates from India to Australia across consecutive day files.
+          </p>
+          <div style="background:#080c14; border:1px solid var(--border-subtle); border-radius:6px; padding:12px; font-size:12px; font-family:var(--font-mono); line-height:1.7;">
+            <div style="color:#fbbf24;">&bull; Day 1 (2024-01-10): Registered in India</div>
+            <div style="padding-left:14px; color:var(--text-muted);">&rarr; Table_India: is_active = 'A'</div>
+            <div style="color:#38bdf8; margin-top:6px;">&bull; Day 2 (2024-01-15): Relocates to Australia</div>
+            <div style="padding-left:14px; color:#10b981;">&rarr; Table_Australia: is_active = 'A' (INSERTED)</div>
+            <div style="padding-left:14px; color:#f43f5e;">&rarr; Table_India: is_active = 'I' (DEACTIVATED)</div>
+            <div style="margin-top:10px; border-top:1px dashed var(--border-subtle); padding-top:6px; color:#fff;">
+              Guarantees: Exactly 1 active profile across all tables in Current_Member_Profiles!
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-box">
+          <div class="sim-box-title">🛡️ Late-Arriving File Protection</div>
+          <p style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
+            <strong>Scenario:</strong> Out-of-order deliveries. Day 1 file arrives AFTER Day 2 file.
+          </p>
+          <div style="background:#080c14; border:1px solid var(--border-subtle); border-radius:6px; padding:12px; font-size:12px; font-family:var(--font-mono); line-height:1.7;">
+            <div style="color:#38bdf8;">&bull; Day 2 arrives first (2024-01-15):</div>
+            <div style="padding-left:14px; color:#10b981;">&rarr; Profile updated to Platinum ('PLT')</div>
+            <div style="color:#fbbf24; margin-top:6px;">&bull; Day 1 arrives late (2024-01-10):</div>
+            <div style="padding-left:14px; color:#f43f5e;">&rarr; PROTECTED & SKIPPED by CountryRouter</div>
+            <div style="padding-left:14px; color:var(--text-muted);">&rarr; Reason: timestamp (2024-01-10) &lt; existing (2024-01-15)</div>
+            <div style="margin-top:10px; border-top:1px dashed var(--border-subtle); padding-top:6px; color:#fff;">
+              Guarantees: Current profile does NOT regress to older Silver ('SLV') state!
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 7: Architecture & Codebase Map -->
+    <section class="content-section" id="tab-arch">
+      <div class="section-header">
+        <span class="section-tag">Stage 7 &bull; Architecture & Code Map</span>
+        <h2 class="section-title">Complete Codebase Mapping & Symbol Directory</h2>
+        <p class="section-subtitle">
+          Direct pointers to every module, class, function, and SQL file implementing each stage of the pipeline.
+        </p>
+      </div>
+
+      <div id="arch-layers-list">
+        <!-- Populated via app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Load Static Visual Data (Zero CORS / Offline Capable) -->
+  <script src="data.js"></script>
+  <!-- Load Visual Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
